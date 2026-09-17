@@ -41,6 +41,11 @@ def read_dialog(path):
     return messages
 
 
+def sanitize_text(text, supported_chars):
+    """Удаляет только символы, которые не поддерживает Supertonic."""
+    return "".join(char for char in text if char in supported_chars)
+
+
 def format_time(seconds):
     minutes = int(seconds // 60)
     secs = seconds % 60
@@ -100,6 +105,10 @@ def main():
 
     user_style = tts.get_voice_style(args.voice_user)
     assistant_style = tts.get_voice_style(args.voice_assistant)
+
+    # Используем реальный набор символов текущей модели Supertonic.
+    supported_chars = set(tts.model.text_processor.supported_character_set)
+
     messages = read_dialog(args.input)
     if not messages:
         raise ValueError("В TXT не найдено ни одной реплики.")
@@ -131,11 +140,15 @@ def main():
             skipped += 1
             continue
 
+        clean_text = sanitize_text(text, supported_chars)
+        if not clean_text.strip():
+            continue
+
         print()
-        print(f"[{index}/{len(messages)}] {role_name}: {text[:80].replace(chr(10), ' ')}")
+        print(f"[{index}/{len(messages)}] {role_name}: {clean_text[:80].replace(chr(10), ' ')}")
         start = time.perf_counter()
         wav, _ = tts.synthesize(
-            text=text,
+            text=clean_text,
             voice_style=style,
             total_steps=args.total_steps,
             speed=args.speed,

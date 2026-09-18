@@ -53,6 +53,33 @@ def format_time(seconds):
     return f"{minutes}:{secs:05.2f}"
 
 
+def synthesize_with_fallback(tts, text, style, args):
+    """Пробует всё более короткие чанки; если реплика не синтезируется, отдаёт ошибку вызывающему коду."""
+    chunk_lengths = []
+    for value in (args.max_chunk_length, 150, 75, 40):
+        if value > 0 and value not in chunk_lengths:
+            chunk_lengths.append(value)
+
+    last_error = None
+    for chunk_length in chunk_lengths:
+        try:
+            result = tts.synthesize(
+                text=text,
+                voice_style=style,
+                total_steps=args.total_steps,
+                speed=args.speed,
+                max_chunk_length=chunk_length,
+                silence_duration=args.silence_duration,
+                lang=args.lang,
+                verbose=args.verbose,
+            )
+            return result, chunk_length
+        except Exception as exc:
+            last_error = exc
+
+    raise last_error
+
+
 def main():
     parser = argparse.ArgumentParser(description="Supertonic TXT -> WAV")
     parser.add_argument("input", type=Path, help="TXT-файл диалога")
@@ -123,6 +150,7 @@ def main():
     total_compute = 0.0
     created = 0
     skipped = 0
+    failed = 0
     overall_start = time.perf_counter()
 
     for index, (role, text) in enumerate(messages, start=1):
@@ -141,21 +169,21 @@ def main():
 
         clean_text = sanitize_text(text, supported_chars)
         if not clean_text.strip():
+            failed += 1
             continue
 
         print()
         print(f"[{index}/{len(messages)}] {role_name}: {clean_text[:80].replace(chr(10), ' ')}")
         start = time.perf_counter()
-        wav, _ = tts.synthesize(
-            text=clean_text,
-            voice_style=style,
-            total_steps=args.total_steps,
-            speed=args.speed,
-            max_chunk_length=args.max_chunk_length,
-            silence_duration=args.silence_duration,
-            lang=args.lang,
-            verbose=args.verbose,
-        )
+        try:
+            (wav, _), used_chunk_length = synthesize_with_fallback(
+                tts, clean_text, style, args
+            )
+        except Exception:
+            failed += 1
+            print("  Не удалось озвучить реплику, переходим к следующей.")
+            continue
+
         elapsed = time.perf_counter() - start
         tts.save_audio(wav, output_path)
         samples = wav.shape[0] if wav.ndim == 1 else wav.shape[-1]
@@ -163,6 +191,7 @@ def main():
         total_audio += audio_seconds
         total_compute += elapsed
         created += 1
+        print(f"  chunk:   {used_chunk_length}")
         print(f"  аудио:   {audio_seconds:.2f} сек")
         print(f"  время:   {elapsed:.2f} сек")
         print(f"  RTF:     {elapsed / audio_seconds:.3f}")
@@ -174,6 +203,7 @@ def main():
     print("=" * 60)
     print(f"Новых WAV:       {created}")
     print(f"Пропущено:       {skipped}")
+    print(f"Не озвучено:     {failed}")
     print(f"Аудио:           {format_time(total_audio)}")
     print(f"Время синтеза:   {format_time(total_compute)}")
     print(f"Общее время:     {format_time(overall_time)}")

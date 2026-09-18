@@ -6,6 +6,7 @@ from supertonic import TTS
 
 DEFAULT_STEPS = 8
 DEFAULT_SPEED = 1.0
+DEFAULT_MAX_CHUNK_LENGTH = 300
 DEFAULT_SILENCE = 0.4
 DEFAULT_USER_VOICE = "M4"
 DEFAULT_ASSISTANT_VOICE = "F1"
@@ -66,7 +67,7 @@ def main():
     parser.add_argument("--inter-threads", type=int, default=None)
     parser.add_argument("--total-steps", type=int, default=DEFAULT_STEPS)
     parser.add_argument("--speed", type=float, default=DEFAULT_SPEED)
-    parser.add_argument("--max-chunk-length", type=int, default=None)
+    parser.add_argument("--max-chunk-length", type=int, default=DEFAULT_MAX_CHUNK_LENGTH)
     parser.add_argument("--silence-duration", type=float, default=DEFAULT_SILENCE)
     parser.add_argument("--lang", default=None)
     parser.add_argument("--verbose", action="store_true")
@@ -105,8 +106,6 @@ def main():
 
     user_style = tts.get_voice_style(args.voice_user)
     assistant_style = tts.get_voice_style(args.voice_assistant)
-
-    # Используем реальный набор символов текущей модели Supertonic.
     supported_chars = set(tts.model.text_processor.supported_character_set)
 
     messages = read_dialog(args.input)

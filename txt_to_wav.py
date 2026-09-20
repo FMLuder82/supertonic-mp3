@@ -145,6 +145,8 @@ def main():
     print(f"ASSISTANT: {args.voice_assistant}")
     print(f"Реплик:    {len(messages)}")
     print(f"Вывод:     {output_dir.resolve()}")
+    print(f"Поддержка 'й': {'ДА' if 'й' in supported_chars else 'НЕТ'}")
+    print(f"Поддержка 'л': {'ДА' if 'л' in supported_chars else 'НЕТ'}")
 
     total_audio = 0.0
     total_compute = 0.0
@@ -174,6 +176,9 @@ def main():
 
         print()
         print(f"[{index}/{len(messages)}] {role_name}: {clean_text[:80].replace(chr(10), ' ')}")
+        if "й" in text or "й" in clean_text:
+            print(f"  Диагностика: исходный='{'ДА' if 'й' in text else 'НЕТ'}', после очистки='{'ДА' if 'й' in clean_text else 'НЕТ'}'")
+
         start = time.perf_counter()
         try:
             (wav, _), used_chunk_length = synthesize_with_fallback(

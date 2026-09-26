@@ -4,7 +4,7 @@ from pathlib import Path
 
 from supertonic import TTS
 
-DEFAULT_STEPS = 4
+DEFAULT_STEPS = 8
 DEFAULT_SPEED = 1.0
 DEFAULT_MAX_CHUNK_LENGTH = 300
 DEFAULT_SILENCE = 0.4
